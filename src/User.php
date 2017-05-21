@@ -22,12 +22,16 @@ class User {
     return $this->email;
   }
 
-  public function setEmail($email) {
-    $this->email = $email;
-  }
-
   public function getUsername() {
     return $this->username;
+  }
+
+  public function getHashedPassword() {
+     return $this->hashedPassword;
+  }
+  
+  public function setEmail($email) {
+    $this->email = $email;
   }
 
   public function setUsername($username) {
@@ -35,13 +39,12 @@ class User {
   }
 
   public function setHashedPassword($password) {
-
     $this->hashedPassword = password_hash($password, PASSWORD_BCRYPT);
   }
 
   public function saveToDB(mysqli $conn) {
     if ($this->id == -1) {
-      $sql = "INSERT INTO Users (email, username, hashed_password) VALUES"
+      $sql = "INSERT INTO User (email, username, hashed_password) VALUES"
               . "('$this->email', '$this->username', '$this->hashedPassword')";
       $result = $conn->query($sql);
       if ($result == true) {
@@ -49,7 +52,7 @@ class User {
         return true;
       }
     } else {
-      $sql = "UPDATE Users SET username='$this->username',
+      $sql = "UPDATE User SET username='$this->username',
               email='$this->email',
               hashed_password='$this->hashedPassword'
               WHERE id=$this->id";
@@ -63,7 +66,7 @@ class User {
 
   public function delete(mysqli $conn) {
     if ($this->id != -1) {
-      $sql = "DELETE FROM Users WHERE id=$this->id";
+      $sql = "DELETE FROM User WHERE id=$this->id";
       $result = $conn->query($sql);
       if ($result == true) {
         $this->id = -1;
@@ -74,9 +77,28 @@ class User {
     }
     return true;
   }
+  
+  public function login() {
+    $_SESSION["loggedUserId"] = $this->id;
+  }
 
   static public function loadUserById(mysqli $conn, $id) {
-    $sql = "SELECT * FROM Users WHERE id=$id";
+    $sql = "SELECT * FROM User WHERE id=$id";
+    $result = $conn->query($sql);
+    if ($result == true && $result->num_rows == 1) {
+      $row = $result->fetch_assoc();
+      $loadedUser = new User();
+      $loadedUser->id = $row['id'];
+      $loadedUser->username = $row['username'];
+      $loadedUser->hashedPassword = $row['hashed_password']; //zwroc uwage na rozne nazewnictwa hashedpassword;
+      $loadedUser->email = $row['email'];
+      return $loadedUser;
+    }
+    return null;
+  }
+  
+  static public function loadUserByEmail(mysqli $conn, $email) {
+    $sql = "SELECT * FROM User WHERE email='$email'";
     $result = $conn->query($sql);
     if ($result == true && $result->num_rows == 1) {
       $row = $result->fetch_assoc();
@@ -91,7 +113,7 @@ class User {
   }
 
   static public function loadAllUsers(mysqli $conn) {
-    $sql = "SELECT * FROM Users";
+    $sql = "SELECT * FROM User";
     $ret = [];
     $result = $conn->query($sql);
     if ($result == true && $result->num_rows != 0) {
